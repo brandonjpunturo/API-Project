@@ -51,7 +51,7 @@ try:
     cache_file.close() # Close the file, we're good, we got the data in a dictionary.
 except:
     CACHE_DICTION2 = {}
-CACHE_DICTION2={}
+
  #This function is retrieving My Facebook Likes
 def get_facebook_likes():
     global CACHE_DICTION
@@ -59,11 +59,10 @@ def get_facebook_likes():
         print("Data was in the cache")
         return(CACHE_DICTION)
     else:
-        print("fetching")
+        print("fetching Facebook Likes")
         posts = graph.get_object(id="me", fields="likes")
         try:
             CACHE_DICTION=posts
-            print("yes")
             dumped_json_cache=json.dumps(CACHE_DICTION)
             fw=open(CACHE_FNAME,"w")
             fw.write(dumped_json_cache)
@@ -148,16 +147,17 @@ py.iplot(fig,filename="Years")
 def get_recommendations(x):
 	global CACHE_DICTION
 	if x in CACHE_DICTION.keys() or x in CACHE_DICTION2.keys():
-		print("Retrieving Data")
+		print("Retrieving Retrieving Recommendation Data")
 		return CACHE_DICTION
 	else:
+		print("Print Fetching Recommendation Data")
 		params={"k":tastekid_delve,"q":x,"verbose":"1"}
 		get_recommendation=requests.get(taste_kid,params=params)
 		recommended=json.loads(get_recommendation.text)
 		if recommended["Similar"]["Info"][0]["Type"]=="unknown":
 			try:
 				CACHE_DICTION2[x]=recommended
-				print("yes")
+				
 				dumped_json_cache=json.dumps(CACHE_DICTION2)
 				fw=open(CACHE_FNAME2,"w")
 				fw.write(dumped_json_cache)
@@ -168,7 +168,6 @@ def get_recommendations(x):
 			
 			try:
 				CACHE_DICTION[x]=recommended
-				print("yes")
 				dumped_json_cache=json.dumps(CACHE_DICTION)
 				fw=open(CACHE_FNAME,"w")
 				fw.write(dumped_json_cache)
@@ -185,27 +184,26 @@ for like in liked_data:
 	get_recommendations(like[0])
 
 #Creating a table in the database for the recommendations
-cursor.execute("CREATE TABLE Recommendations(Liked_Object TEXT , Type TEXT, First_Recommendation date, FOREIGN KEY(Liked_Object) REFERENCES Facebook_Likes(Object_Liked))")
+cursor.execute("CREATE TABLE Recommendations(Liked_Object TEXT , Type TEXT, Recommendation date, FOREIGN KEY(Liked_Object) REFERENCES Facebook_Likes(Object_Liked))")
 
 i=0
 #This long for loop adds the recommendations to the database
 for key in CACHE_DICTION.keys():
-	if i <3 or i >=11:
+	if i <3 or i >=12:
 		"stop"
 	else:
 		cached=CACHE_DICTION[key]
 		name=cached["Similar"]["Info"][0]["Name"]
-		print("yes")
-		t=cached["Similar"]["Info"][0]["Type"]
+		Type=cached["Similar"]["Info"][0]["Type"]
 		Recommendation=cached["Similar"]["Results"][0]["Name"]
 		Recommendation_2=cached["Similar"]["Results"][1]["Name"]
 		Recommendation_3=cached["Similar"]["Results"][2]["Name"]
-		tup=name,t,Recommendation
-		tup2=name,t,Recommendation_2
-		tup3=name,t,Recommendation_3
-		cursor.execute("INSERT INTO Recommendations(Liked_Object,Type,First_Recommendation) VALUES (?,?,?)", tup)
-		cursor.execute("INSERT INTO Recommendations(Liked_Object,Type,First_Recommendation) VALUES (?,?,?)", tup2)
-		cursor.execute("INSERT INTO Recommendations(Liked_Object,Type,First_Recommendation) VALUES (?,?,?)", tup3)
+		tup=name,Type,Recommendation
+		tup2=name,Type,Recommendation_2
+		tup3=name,Type,Recommendation_3
+		cursor.execute("INSERT INTO Recommendations(Liked_Object,Type,Recommendation) VALUES (?,?,?)", tup)
+		cursor.execute("INSERT INTO Recommendations(Liked_Object,Type,Recommendation) VALUES (?,?,?)", tup2)
+		cursor.execute("INSERT INTO Recommendations(Liked_Object,Type,Recommendation) VALUES (?,?,?)", tup3)
 	i+=1	
 connection.commit()
 
@@ -213,10 +211,10 @@ connection.commit()
 def cache_nytimesarticles(x):
 	global CACHE_DICTION
 	if x in CACHE_DICTION.keys():
-		print("Yessir")
+		print("Retrieving NY Times Articles")
 		return CACHE_DICTION
 	else:
-		print("yep")
+		print("Fetching NY Times articles")
 		params={"q": x,"api-key":"153aa45089f141d0ba1bed4bb257f056"}
 		nytimes_articles=requests.get(nytimes,params=params)
 		text=json.loads(nytimes_articles.text)
@@ -231,7 +229,7 @@ def cache_nytimesarticles(x):
 			print("something went wrong")
 
 #Running the Function
-names_of_recommendations=cursor.execute("SELECT First_Recommendation FROM Recommendations")
+names_of_recommendations=cursor.execute("SELECT Recommendation FROM Recommendations")
 recommendations_data=names_of_recommendations.fetchall()
 for recommended in recommendations_data:	
 	cache_nytimesarticles(recommended[0])
@@ -242,7 +240,7 @@ cursor.execute("CREATE TABLE NY_Times_articles(Recommended_item TEXT , web_url T
 #Adding the data into the database
 i=0
 for keys in CACHE_DICTION.keys():
-	if i <=11:
+	if i <=12:
 		"stop"
 	else:
 		cached=CACHE_DICTION[keys]
@@ -264,10 +262,10 @@ connection.commit()
 def cache_newsapiarticles(x):
 	global CACHE_DICTION2
 	if x in CACHE_DICTION2.keys():
-		print("Yessir")
+		print("Retrieving Newsapi Articles")
 		return CACHE_DICTION2
 	else:
-		print("yep")
+		print("Fetching Newsapi Articles")
 		params={"q": x,"apiKey":newsapi_key}
 		newsapi_articles=requests.get(newsapi_endpoint,params=params)
 		text=json.loads(newsapi_articles.text)
@@ -286,6 +284,7 @@ for recommended in recommendations_data:
 cursor.execute("CREATE TABLE news_API_articles(Recommended_item TEXT , web_url TEXT, snippet TEXT,publication_date Date, Website,TEXT )")
 #Creating the database table for this data
 #Adding the data to the database
+
 i=0
 for key in CACHE_DICTION2.keys():
 	if i <= 15:
@@ -317,4 +316,6 @@ plt.figure()
 plt.imshow(wordcloud, interpolation="bilinear")
 plt.axis("off")
 plt.title("WordCloud with websites that Newsapi brings up most often ")
+plt.savefig("Wordcloud.png")
 plt.show()
+
